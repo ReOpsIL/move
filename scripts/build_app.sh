@@ -43,7 +43,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHighResolutionCapable</key><true/>
-  <key>LSApplicationCategoryType</key><string>public.app-category.board-games</string>
+  <key>LSApplicationCategoryType</key><string>public.app-category.education</string>
 </dict>
 </plist>
 PLIST
