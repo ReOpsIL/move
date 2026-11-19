@@ -8,7 +8,7 @@ A tiny macOS menu-bar app that serves you chess puzzles a few times a day.
 - Drag the panel by its header (or the grab bar) to put it anywhere; drag the bottom-right corner to resize the board. Double-click the grab bar or right-click the icon → *Move Back Under Icon* to reset.
 - **Hint** (1st press: highlights the piece + theme, 2nd press: shows an arrow), **Answer** (plays out the solution), **Skip**, **Close** (Esc).
 - **Stockfish 19** checks your moves: if you find a different move that also wins, it's accepted and the engine takes over as your opponent. Wrong moves get an explanation ("Rd1 loses, engine −5.8").
-- 6 levels (Beginner 600 → Master 2300+), 9,000 curated puzzles from the Lichess open database (CC0).
+- 6 levels (Beginner 600 → Master 2300+), 60,000 curated puzzles (10,000 per level) from the Lichess open database (CC0).
 - Adjustable engine analysis strength, board themes, sounds, coordinates, launch at login, stats & streaks.
 
 ## Build & run
