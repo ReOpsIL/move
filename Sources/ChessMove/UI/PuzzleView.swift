@@ -41,9 +41,12 @@ struct PuzzleView: View {
                     .font(Ink.eyebrow)
                     .tracking(1.4)
                     .foregroundStyle(Ink.accent)
-                Text(title)
-                    .font(Ink.title(32))
-                    .foregroundStyle(Ink.text)
+                HStack(spacing: 10) {
+                    if session.puzzle != nil { sideDisc(session.userColor, size: 26) }
+                    Text(title)
+                        .font(Ink.title(32))
+                        .foregroundStyle(Ink.text)
+                }
                 Text(subtitle)
                     .font(.system(size: 13))
                     .foregroundStyle(Ink.secondary)
@@ -140,13 +143,27 @@ struct PuzzleView: View {
     private var statusTitle: String {
         switch session.feedback {
         case .none: return "Ready"
-        case .info: return session.state == .opponentMoving ? "Get ready" : "Your move"
+        case .info: return session.state == .opponentMoving ? "\(opponent) moves…" : "\(me)'s move"
         case .thinking: return "Checking"
-        case .ok: return "OK"
+        case .ok: return session.state == .opponentMoving ? "OK · \(opponent) replies" : "OK · \(me) again"
         case .notOK: return "Not OK"
         case .solved: return "Solved"
         case .failed: return "Solution"
         }
+    }
+
+    private var me: String { session.userColor.name }
+    private var opponent: String { session.userColor.opposite.name }
+
+    /// A small king in the colour of the side to move, on a light tile so black stays visible.
+    private func sideDisc(_ color: PieceColor, size: CGFloat) -> some View {
+        Image(nsImage: PieceImages.image(for: Piece(.king, color)))
+            .resizable()
+            .interpolation(.high)
+            .frame(width: size, height: size)
+            .padding(3)
+            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(settings.theme.light))
+            .help("\(color.name) to move")
     }
 
     private var statusColor: Color {

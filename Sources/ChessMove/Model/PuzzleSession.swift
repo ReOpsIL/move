@@ -352,7 +352,7 @@ final class PuzzleSession: ObservableObject {
                 hintLevel = 1
                 hintSquare = m.from
                 let names = ["pawn", "knight", "bishop", "rook", "queen", "king"]
-                var text = "Hint: use your \(names[piece.kind.rawValue]) on \(Square.name(m.from))."
+                var text = "Hint: use the \(piece.color.name.lowercased()) \(names[piece.kind.rawValue]) on \(Square.name(m.from))."
                 if let theme = puzzle?.themeLabels.first(where: { !["Opening", "Middlegame", "Endgame"].contains($0) }) {
                     text += " Theme: \(theme)."
                 }

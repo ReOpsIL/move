@@ -27,7 +27,7 @@ enum PieceImages {
             } else {
                 let ink = NSColor(white: 0.1, alpha: 1)
                 draw(s, [.foregroundColor: ink])
-                draw(o, [.foregroundColor: NSColor(white: 0.8, alpha: 1)])
+                draw(o, [.foregroundColor: NSColor(white: 0.45, alpha: 1)])
                 draw(s, [.foregroundColor: NSColor.clear, .strokeColor: ink, .strokeWidth: 3])
             }
             return true
