@@ -69,13 +69,16 @@ final class AppSettings: ObservableObject {
     @Published var showCoordinates: Bool { didSet { d.set(showCoordinates, forKey: "showCoordinates") } }
     @Published var acceptEngineAlternatives: Bool { didSet { d.set(acceptEngineAlternatives, forKey: "acceptEngineAlternatives") } }
     @Published var customEnginePath: String { didSet { d.set(customEnginePath, forKey: "customEnginePath") } }
+    /// Side length of the board in points (the whole panel scales around it).
+    @Published var boardSize: Double { didSet { d.set(boardSize, forKey: "boardSize") } }
+    static let boardSizeRange: ClosedRange<Double> = 340...820
 
     private init() {
         d.register(defaults: [
             "level": 2, "engineStrength": 1, "puzzlesPerDay": 4,
             "activeFromHour": 9, "activeToHour": 21, "boardTheme": 0,
             "sounds": true, "showCoordinates": true, "acceptEngineAlternatives": true,
-            "customEnginePath": "",
+            "customEnginePath": "", "boardSize": 400.0,
         ])
         level = d.integer(forKey: "level")
         engineStrength = d.integer(forKey: "engineStrength")
@@ -87,6 +90,7 @@ final class AppSettings: ObservableObject {
         showCoordinates = d.bool(forKey: "showCoordinates")
         acceptEngineAlternatives = d.bool(forKey: "acceptEngineAlternatives")
         customEnginePath = d.string(forKey: "customEnginePath") ?? ""
+        boardSize = min(max(d.double(forKey: "boardSize"), Self.boardSizeRange.lowerBound), Self.boardSizeRange.upperBound)
     }
 
     var puzzleLevel: PuzzleLevel { PuzzleLevel.all[max(0, min(level, PuzzleLevel.all.count - 1))] }

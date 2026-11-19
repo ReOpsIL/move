@@ -70,6 +70,13 @@ struct SettingsView: View {
                 Picker("Board", selection: $settings.boardTheme) {
                     ForEach(BoardTheme.allCases) { Text($0.name).tag($0.rawValue) }
                 }
+                LabeledContent("Board size") {
+                    HStack {
+                        Slider(value: $settings.boardSize, in: AppSettings.boardSizeRange, step: 20)
+                            .frame(width: 180)
+                        Text(verbatim: "\(Int(settings.boardSize)) pt").foregroundStyle(.secondary).monospacedDigit()
+                    }
+                }
                 Toggle("Show coordinates", isOn: $settings.showCoordinates)
                 Toggle("Sounds", isOn: $settings.sounds)
             }

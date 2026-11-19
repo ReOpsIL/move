@@ -8,12 +8,20 @@ struct PuzzleView: View {
     @ObservedObject var engine: EngineService
     var onClose: () -> Void
     var onSettings: () -> Void
+    /// Window-move gestures, handled by the app delegate (which owns the panel).
+    var onMove: (PanelMove) -> Void = { _ in }
 
-    private let boardSize: CGFloat = 400
+    @State private var resizeStart: (mouse: CGPoint, size: Double)?
+    @State private var hoveringHeader = false
+
+    private var boardSize: CGFloat { CGFloat(settings.boardSize) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
+                .padding(.top, 6)
+                .contentShape(Rectangle())
+                .gesture(moveGesture)
             board
             statusRow
             levelChips
@@ -28,8 +36,75 @@ struct PuzzleView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Ink.hairline, lineWidth: 1)
         )
+        .overlay(alignment: .top) { grabBar }
+        .overlay(alignment: .bottomTrailing) { resizeGrip }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .environment(\.colorScheme, .dark)
+    }
+
+    // MARK: Move & resize
+
+    private var moveGesture: some Gesture {
+        DragGesture(minimumDistance: 2, coordinateSpace: .global)
+            .onChanged { _ in onMove(.dragChanged) }
+            .onEnded { _ in onMove(.dragEnded) }
+    }
+
+    /// Small handle at the top: drag to move, double-click to snap back under the menu-bar icon.
+    private var grabBar: some View {
+        Capsule()
+            .fill(Color.white.opacity(hoveringHeader ? 0.35 : 0.16))
+            .frame(width: 38, height: 4)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 30)
+            .contentShape(Rectangle())
+            .onTapGesture(count: 2) { onMove(.resetPosition) }
+            .gesture(moveGesture)
+            .onHover { inside in
+                hoveringHeader = inside
+                if inside { NSCursor.openHand.push() } else { NSCursor.pop() }
+            }
+            .help("Drag to move · double-click to put back under the menu-bar icon")
+    }
+
+    /// Bottom-right grip: drag to scale the board (and the whole panel).
+    private var resizeGrip: some View {
+        Canvas { ctx, size in
+            for i in 0..<3 {
+                let o = CGFloat(i) * 4
+                var p = Path()
+                p.move(to: CGPoint(x: size.width - 2 - o, y: size.height - 2))
+                p.addLine(to: CGPoint(x: size.width - 2, y: size.height - 2 - o))
+                ctx.stroke(p, with: .color(Color.white.opacity(0.3)), lineWidth: 1.2)
+            }
+        }
+        .frame(width: 14, height: 14)
+        .padding(6)
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 1, coordinateSpace: .global)
+                .onChanged { _ in
+                    let mouse = NSEvent.mouseLocation
+                    if resizeStart == nil { resizeStart = (mouse, settings.boardSize) }
+                    guard let start = resizeStart else { return }
+                    // Right and down both grow the board (screen y grows upwards).
+                    let delta = ((mouse.x - start.mouse.x) + (start.mouse.y - mouse.y)) / 2
+                    let maxSize = min(AppSettings.boardSizeRange.upperBound,
+                                      Double((NSScreen.main?.visibleFrame.height ?? 900) - 330))
+                    let size = (start.size + delta).clamped(to: AppSettings.boardSizeRange.lowerBound...max(maxSize, AppSettings.boardSizeRange.lowerBound))
+                    settings.boardSize = size.rounded()
+                }
+                .onEnded { _ in resizeStart = nil }
+        )
+        .onHover { inside in
+            if inside { resizeCursor.push() } else { NSCursor.pop() }
+        }
+        .help("Drag to resize")
+    }
+
+    private var resizeCursor: NSCursor {
+        if #available(macOS 15.0, *) { return NSCursor.frameResize(position: .bottomRight, directions: .all) }
+        return NSCursor.crosshair
     }
 
     // MARK: Header
@@ -186,6 +261,25 @@ struct PuzzleView: View {
     // MARK: Levels
 
     private var levelChips: some View {
+        ViewThatFits(in: .horizontal) {
+            chipRow
+            Menu {
+                ForEach(PuzzleLevel.all) { lvl in
+                    Button(lvl.label) {
+                        settings.level = lvl.id
+                        session.loadNext()
+                    }
+                }
+            } label: {
+                Text("Level: \(settings.puzzleLevel.name)")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .buttonStyle(ChipStyle(selected: true))
+        }
+    }
+
+    private var chipRow: some View {
         HStack(spacing: 6) {
             ForEach(PuzzleLevel.all) { lvl in
                 Button(lvl.name) {
@@ -232,4 +326,13 @@ struct PuzzleView: View {
         .foregroundStyle(Ink.tertiary)
         .help(help)
     }
+}
+
+
+enum PanelMove {
+    case dragChanged, dragEnded, resetPosition
+}
+
+extension Comparable {
+    func clamped(to r: ClosedRange<Self>) -> Self { min(max(self, r.lowerBound), r.upperBound) }
 }

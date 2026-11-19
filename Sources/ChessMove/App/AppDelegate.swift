@@ -28,12 +28,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let root = PuzzleView(
             session: session, settings: settings, stats: stats, engine: engine,
             onClose: { [weak self] in self?.closePopover() },
-            onSettings: { [weak self] in self?.openSettings() }
+            onSettings: { [weak self] in self?.openSettings() },
+            onMove: { [weak self] in self?.handleMove($0) }
         )
-        let hosting = NSHostingView(rootView: root)
+        let hosting = SizingHostingView(rootView: root)
         hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
         hostingView = hosting
         panel = PuzzlePanel(contentView: hosting)
+        // Keep the panel's top-left corner fixed while its content grows or shrinks.
+        hosting.onSizeChange = { [weak self] size in self?.panel.resizeKeepingTopLeft(to: size) }
 
         engine.start()
 
@@ -81,6 +84,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             item.isEnabled = false
             menu.addItem(item)
         }
+        if savedTopLeft != nil {
+            menu.addItem(withTitle: "Move Back Under Icon", action: #selector(menuResetPosition), keyEquivalent: "").target = self
+        }
         menu.addItem(withTitle: "Settings…", action: #selector(menuSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit Chess Move", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -92,6 +98,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuShow() { showPuzzle(automatic: false) }
     @objc private func menuNew() { session.loadNext(); showPuzzle(automatic: false) }
     @objc private func menuSettings() { openSettings() }
+    @objc private func menuResetPosition() { resetPosition() }
 
     // MARK: Panel
 
@@ -101,10 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduler.userOpenedPuzzle()
             NSApp.activate(ignoringOtherApps: true)
         }
-        guard let button = statusItem.button, let buttonWindow = button.window else { return }
-        let anchor = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
         if !panel.isVisible {
-            panel.place(below: anchor)
+            placePanel()
             panel.alphaValue = 0
             panel.orderFrontRegardless()
             NSAnimationContext.runAnimationGroup { ctx in
@@ -127,6 +132,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }, completionHandler: { [weak self] in
             Task { @MainActor in self?.panel.orderOut(nil) }
         })
+    }
+
+    // MARK: Position
+
+    private var dragStart: (mouse: NSPoint, origin: NSPoint)?
+
+    private var iconAnchor: NSRect? {
+        guard let button = statusItem.button, let w = button.window else { return nil }
+        return w.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    /// Top-left corner the user dragged the panel to, if it's still on a connected screen.
+    private var savedTopLeft: NSPoint? {
+        let d = UserDefaults.standard
+        guard d.object(forKey: "panel.left") != nil else { return nil }
+        let p = NSPoint(x: d.double(forKey: "panel.left"), y: d.double(forKey: "panel.top"))
+        let probe = NSPoint(x: p.x + 40, y: p.y - 20)
+        return NSScreen.screens.contains { $0.visibleFrame.contains(probe) } ? p : nil
+    }
+
+    private func placePanel() {
+        if let p = savedTopLeft {
+            panel.place(topLeft: p)
+        } else if let anchor = iconAnchor {
+            panel.place(below: anchor)
+        }
+    }
+
+    private func handleMove(_ move: PanelMove) {
+        switch move {
+        case .dragChanged:
+            let mouse = NSEvent.mouseLocation
+            if dragStart == nil { dragStart = (mouse, panel.frame.origin) }
+            guard let s = dragStart else { return }
+            panel.setFrameOrigin(NSPoint(x: s.origin.x + mouse.x - s.mouse.x, y: s.origin.y + mouse.y - s.mouse.y))
+        case .dragEnded:
+            dragStart = nil
+            UserDefaults.standard.set(panel.frame.minX, forKey: "panel.left")
+            UserDefaults.standard.set(panel.frame.maxY, forKey: "panel.top")
+        case .resetPosition:
+            resetPosition()
+        }
+    }
+
+    private func resetPosition() {
+        UserDefaults.standard.removeObject(forKey: "panel.left")
+        UserDefaults.standard.removeObject(forKey: "panel.top")
+        if panel.isVisible, let anchor = iconAnchor {
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.2
+                panel.animator().setFrame(panel.frameBelow(anchor), display: true)
+            }
+        }
     }
 
     // MARK: Settings

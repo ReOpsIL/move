@@ -5,6 +5,7 @@ A tiny macOS menu-bar app that serves you chess puzzles a few times a day.
 - Lives in the menu bar (no Dock icon). **Click** the knight for a puzzle, **right-click** for the menu.
 - Pops up automatically N times a day within your active hours (configurable, or off).
 - Make a move by dragging or clicking → instant **✓ OK / ✗ Not OK** feedback.
+- Drag the panel by its header (or the grab bar) to put it anywhere; drag the bottom-right corner to resize the board. Double-click the grab bar or right-click the icon → *Move Back Under Icon* to reset.
 - **Hint** (1st press: highlights the piece + theme, 2nd press: shows an arrow), **Answer** (plays out the solution), **Skip**, **Close** (Esc).
 - **Stockfish 19** checks your moves: if you find a different move that also wins, it's accepted and the engine takes over as your opponent. Wrong moves get an explanation ("Rd1 loses, engine −5.8").
 - 6 levels (Beginner 600 → Master 2300+), 9,000 curated puzzles from the Lichess open database (CC0).
