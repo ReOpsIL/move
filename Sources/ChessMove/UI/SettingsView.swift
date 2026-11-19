@@ -92,6 +92,7 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+        .tint(Ink.accent)
         .frame(width: 520)
         .fixedSize(horizontal: false, vertical: true)
     }

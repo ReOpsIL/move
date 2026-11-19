@@ -11,7 +11,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     lazy var scheduler = PuzzleScheduler(settings: settings)
 
     private var statusItem: NSStatusItem!
-    private let popover = NSPopover()
+    private var panel: PuzzlePanel!
+    private var hostingView: NSView!
     private var settingsWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -29,16 +30,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             onClose: { [weak self] in self?.closePopover() },
             onSettings: { [weak self] in self?.openSettings() }
         )
-        let hosting = NSHostingController(rootView: root)
-        hosting.sizingOptions = .preferredContentSize
-        popover.contentViewController = hosting
-        popover.behavior = .applicationDefined
-        popover.animates = true
+        let hosting = NSHostingView(rootView: root)
+        hosting.frame = NSRect(origin: .zero, size: hosting.fittingSize)
+        hostingView = hosting
+        panel = PuzzlePanel(contentView: hosting)
 
         engine.start()
 
         scheduler.onFire = { [weak self] in self?.showPuzzle(automatic: true) }
-        scheduler.canFire = { [weak self] in !(self?.popover.isShown ?? true) }
+        scheduler.canFire = { [weak self] in !(self?.panel.isVisible ?? true) }
         scheduler.start()
 
         let args = CommandLine.arguments
@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let event = NSApp.currentEvent
         if event?.type == .rightMouseUp || event?.modifierFlags.contains(.control) == true {
             showMenu()
-        } else if popover.isShown {
+        } else if panel.isVisible {
             closePopover()
         } else {
             showPuzzle(automatic: false)
@@ -93,7 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuNew() { session.loadNext(); showPuzzle(automatic: false) }
     @objc private func menuSettings() { openSettings() }
 
-    // MARK: Popover
+    // MARK: Panel
 
     func showPuzzle(automatic: Bool) {
         if session.puzzle == nil || session.isFinished { session.loadNext() }
@@ -101,16 +101,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             scheduler.userOpenedPuzzle()
             NSApp.activate(ignoringOtherApps: true)
         }
-        guard let button = statusItem.button else { return }
-        if !popover.isShown {
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        guard let button = statusItem.button, let buttonWindow = button.window else { return }
+        let anchor = buttonWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        if !panel.isVisible {
+            panel.place(below: anchor)
+            panel.alphaValue = 0
+            panel.orderFrontRegardless()
+            NSAnimationContext.runAnimationGroup { ctx in
+                ctx.duration = 0.16
+                panel.animator().alphaValue = 1
+            }
         }
-        if automatic && settings.sounds { NSSound(named: "Purr")?.play() }
-        popover.contentViewController?.view.window?.makeKey()
+        if automatic {
+            if settings.sounds { NSSound(named: "Purr")?.play() }
+        } else {
+            panel.makeKey()
+        }
     }
 
     func closePopover() {
-        popover.performClose(nil)
+        guard panel.isVisible else { return }
+        NSAnimationContext.runAnimationGroup({ ctx in
+            ctx.duration = 0.12
+            panel.animator().alphaValue = 0
+        }, completionHandler: { [weak self] in
+            Task { @MainActor in self?.panel.orderOut(nil) }
+        })
     }
 
     // MARK: Settings
@@ -119,11 +135,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindow == nil {
             let view = SettingsView(settings: settings, engine: engine, scheduler: scheduler, stats: stats, store: store,
                                     onLevelChanged: { [weak self] in
-                                        self?.session.loadNext()
+                                        guard let self else { return }
+                                        if let p = self.session.puzzle, self.settings.puzzleLevel.range.contains(p.rating) { return }
+                                        self.session.loadNext()
                                     })
             let hosting = NSHostingController(rootView: view)
             hosting.sizingOptions = .preferredContentSize
             let w = NSWindow(contentViewController: hosting)
+            w.appearance = NSAppearance(named: .darkAqua)
             w.title = "Chess Move Settings"
             w.styleMask = [.titled, .closable]
             w.isReleasedWhenClosed = false
@@ -134,5 +153,5 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         settingsWindow?.makeKeyAndOrderFront(nil)
     }
 
-    var popoverView: NSView? { popover.contentViewController?.view }
+    var popoverView: NSView? { hostingView }
 }

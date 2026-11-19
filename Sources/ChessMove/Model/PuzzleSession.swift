@@ -107,7 +107,7 @@ final class PuzzleSession: ObservableObject {
         resultRecorded = false
         hintLevel = 0
         state = .opponentMoving
-        feedback = .info("\(orientation.name) to play. Watch the opponent's move…")
+        feedback = .info("Watch the opponent's move…")
 
         Task {
             try? await Task.sleep(for: .milliseconds(700))
@@ -115,7 +115,7 @@ final class PuzzleSession: ObservableObject {
             apply(p.moves[0], sound: true)
             setupPosition = position
             index = 1
-            beginUserTurn(message: "\(orientation.name) to move — find the best move.")
+            beginUserTurn(message: "Find the best move.")
         }
     }
 
@@ -197,10 +197,10 @@ final class PuzzleSession: ObservableObject {
         if !offBook, index < puzzle.moves.count, m == puzzle.moves[index] { return accept(m, alternative: false) }
 
         guard engine.isAvailable, settings.acceptEngineAlternatives || offBook else {
-            return reject(m, before: before, snapshot: snapshot, reason: "that's not the solution.")
+            return reject(m, before: before, snapshot: snapshot, reason: "That's not the solution.")
         }
         state = .checking
-        feedback = .thinking("Checking \(before.san(m)) with the engine…")
+        feedback = .thinking("Asking the engine about \(before.san(m))…")
         let expected: Move? = offBook ? nil : puzzle.moves[index]
         Task {
             let verdict = await judge(before: before, user: m, expected: expected)
@@ -223,18 +223,18 @@ final class PuzzleSession: ObservableObject {
             if best?.bestMove == user { return (true, "") }
         }
         let mine = await engine.search(before, only: [user])
-        guard let b = best?.score, let u = mine?.score else { return (false, "that's not the solution.") }
+        guard let b = best?.score, let u = mine?.score else { return (false, "That's not the solution.") }
         if Self.acceptable(user: u, best: b) { return (true, "") }
         let reason: String
         switch u {
         case .mate(let n) where n < 0:
-            reason = "after \(san) you get mated in \(-n)."
+            reason = "After \(san) you get mated in \(-n)."
         case .mate:
             reason = "\(san) mates, but there's a much faster win."
         case .cp(let c):
             let ev = String(format: "%+.1f", Double(c) / 100)
             if c < -150 { reason = "\(san) loses (engine: \(ev))." }
-            else if c < 150 { reason = "after \(san) the position is roughly equal (\(ev)). There's more!" }
+            else if c < 150 { reason = "After \(san) it's roughly equal (\(ev)). There's more!" }
             else { reason = "\(san) is OK (\(ev)) but there's a much stronger move." }
         }
         return (false, reason)
@@ -264,7 +264,7 @@ final class PuzzleSession: ObservableObject {
         if userMovesLeft <= 0 || gameOver || (!offBook && index >= (puzzle?.moves.count ?? 0)) {
             return finish(success: !hadMistake && !usedHelp)
         }
-        feedback = .ok(alternative ? "✓ OK — that works too! Keep going…" : "✓ OK — keep going…")
+        feedback = .ok(alternative ? "That works too! Keep going…" : "Keep going…")
         state = .opponentMoving
         Task {
             try? await Task.sleep(for: .milliseconds(550))
@@ -276,7 +276,7 @@ final class PuzzleSession: ObservableObject {
             apply(reply, sound: true)
             if !offBook { index += 1 }
             beginUserTurn(message: nil)
-            feedback = .ok("✓ OK — now find the next move.")
+            feedback = .ok("Now find the next move.")
         }
     }
 
@@ -293,7 +293,7 @@ final class PuzzleSession: ObservableObject {
             if !resultRecorded { stats.recordFailed(); resultRecorded = true }
         }
         flash = SquareFlash(square: m.to, good: false)
-        feedback = .notOK("✗ Not OK — \(reason)")
+        feedback = .notOK(reason)
         play("Basso")
         state = .checking
         Task {
@@ -321,12 +321,12 @@ final class PuzzleSession: ObservableObject {
             solutionLine = setupPosition.sanLine(Array(played.dropFirst()))
         }
         if revealed {
-            feedback = .failed("Here's the solution.")
+            feedback = .failed("Here's how it goes.")
         } else if success {
-            feedback = .solved("Puzzle solved! 🎉")
+            feedback = .solved("Clean solve. Nicely done.")
             play("Hero")
         } else {
-            feedback = .solved("Solved — with a little help.")
+            feedback = .solved("Solved, with a little help.")
         }
     }
 

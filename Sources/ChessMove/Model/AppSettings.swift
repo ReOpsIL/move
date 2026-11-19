@@ -11,8 +11,8 @@ struct PuzzleLevel: Identifiable, Hashable {
     static let all: [PuzzleLevel] = [
         .init(id: 0, name: "Beginner", range: 600...1099),
         .init(id: 1, name: "Casual", range: 1100...1399),
-        .init(id: 2, name: "Intermediate", range: 1400...1699),
-        .init(id: 3, name: "Advanced", range: 1700...1999),
+        .init(id: 2, name: "Medium", range: 1400...1699),
+        .init(id: 3, name: "Hard", range: 1700...1999),
         .init(id: 4, name: "Expert", range: 2000...2299),
         .init(id: 5, name: "Master", range: 2300...3200),
     ]
